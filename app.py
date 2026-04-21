@@ -1,29 +1,50 @@
 import streamlit as st
-import pandas as pd
-from sklearn.linear_model import LinearRegression
+st.markdown("### Smart Food Planning System for Local Vendors")
 
-st.title("🍽️ Food Demand Prediction App")
+st.set_page_config(page_title="Food Demand Predictor", layout="centered")
 
-# Load dataset
-data = pd.read_csv("accessories.csv")
+st.title("🍽️ Street Food Demand Prediction System")
+st.write("Predict how many items to prepare to reduce food waste")
 
-# Keep only numeric data
-data = data.select_dtypes(include=['number'])
+# Select item
+item = st.selectbox("Select Item", ["Samosa", "Kachori", "Pakoda", "Sweets"])
 
-# 🔥 VERY IMPORTANT FIX (NaN handling)
-data = data.fillna(data.mean())
+# Inputs
+customers = st.number_input("Expected Customers", value=100)
+weather = st.selectbox("Weather", ["Normal", "Rainy", "Hot"])
+weekend = st.selectbox("Is it Weekend?", ["No", "Yes"])
 
-# Check if still NaN exists
-if data.isnull().sum().sum() > 0:
-    st.error("Still contains missing values ❌")
-    st.stop()
+# Base demand factor
+base_factor = 1.2
 
-# Split data
-X = data.iloc[:, :-1]
-y = data.iloc[:, -1]
+# Adjust based on item
+if item == "Samosa":
+    base_factor = 1.3
+elif item == "Kachori":
+    base_factor = 1.1
+elif item == "Pakoda":
+    base_factor = 3
+elif item == "Sweets":
+    base_factor = 1.0
 
-# Train model
-model = LinearRegression()
-model.fit(X, y)
+# Weather impact
+if weather == "Rainy":
+    base_factor += 0.3
+elif weather == "Hot":
+    base_factor -= 0.2
 
-st.success("Model trained successfully ✅")
+# Weekend impact
+if weekend == "Yes":
+    base_factor += 0.5
+
+# Prediction
+if st.button("Predict Food Quantity"):
+    prediction = int(customers * base_factor)
+
+    st.success(f"👉 Prepare approximately {prediction} {item.lower()}s")
+
+    # Extra insight
+    if weather == "Rainy":
+        st.info("🌧️ Rain increases demand (especially pakoda)")
+    if weekend == "Yes":
+        st.info("🎉 Weekend increases customer flow")
