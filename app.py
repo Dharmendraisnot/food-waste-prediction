@@ -1,50 +1,75 @@
 import streamlit as st
-st.markdown("### Smart Food Planning System for Local Vendors")
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error
 
-st.set_page_config(page_title="Food Demand Predictor", layout="centered")
+st.set_page_config(page_title="Food Demand ML System", layout="centered")
 
-st.title("🍽️ Street Food Demand Prediction System")
-st.write("Predict how many items to prepare to reduce food waste")
+st.title("📊 Food Demand Prediction (ML + Test Evaluation)")
+st.write("Train model + evaluate using test data + predict new values")
 
-# Select item
-item = st.selectbox("Select Item", ["Samosa", "Kachori", "Pakoda", "Sweets"])
+# ==============================
+# LOAD TRAIN DATA
+# ==============================
+train_data = pd.read_csv("train.csv")
 
-# Inputs
-customers = st.number_input("Expected Customers", value=100)
-weather = st.selectbox("Weather", ["Normal", "Rainy", "Hot"])
-weekend = st.selectbox("Is it Weekend?", ["No", "Yes"])
+# Keep only numeric columns
+train_data = train_data.select_dtypes(include=['number'])
 
-# Base demand factor
-base_factor = 1.2
+# Handle missing values
+train_data = train_data.fillna(train_data.mean())
 
-# Adjust based on item
-if item == "Samosa":
-    base_factor = 1.3
-elif item == "Kachori":
-    base_factor = 1.1
-elif item == "Pakoda":
-    base_factor = 3
-elif item == "Sweets":
-    base_factor = 1.0
+# Split train data
+X_train = train_data.iloc[:, :-1]
+y_train = train_data.iloc[:, -1]
 
-# Weather impact
-if weather == "Rainy":
-    base_factor += 0.3
-elif weather == "Hot":
-    base_factor -= 0.2
+# ==============================
+# TRAIN MODEL
+# ==============================
+model = LinearRegression()
+model.fit(X_train, y_train)
 
-# Weekend impact
-if weekend == "Yes":
-    base_factor += 0.5
+st.success("Model trained successfully ✅")
+
+# ==============================
+# LOAD TEST DATA
+# ==============================
+try:
+    test_data = pd.read_csv("test.csv")
+
+    test_data = test_data.select_dtypes(include=['number'])
+    test_data = test_data.fillna(test_data.mean())
+
+    # Make sure same columns
+    X_test = test_data[X_train.columns]
+
+    # Predict on test data
+    test_predictions = model.predict(X_test)
+
+    st.subheader("📊 Test Data Predictions")
+    st.write(test_predictions[:10])
+
+except:
+    st.warning("Test file not found or format mismatch ⚠️")
+
+# ==============================
+# SELECT IMPORTANT FEATURES ONLY
+# ==============================
+
+X_train = train_data[['week', 'checkout_price', 'base_price']]
+y_train = train_data['num_orders']
+
+# Train model
+model.fit(X_train, y_train)
+
+st.subheader("🔮 Enter Details")
+
+week = st.number_input("Week", value=50)
+checkout_price = st.number_input("Checkout Price", value=100)
+base_price = st.number_input("Base Price", value=120)
 
 # Prediction
-if st.button("Predict Food Quantity"):
-    prediction = int(customers * base_factor)
+if st.button("Predict"):
+    prediction = model.predict([[week, checkout_price, base_price]])
+    st.success(f"Predicted Orders: {prediction[0]:.2f}")
 
-    st.success(f"👉 Prepare approximately {prediction} {item.lower()}s")
-
-    # Extra insight
-    if weather == "Rainy":
-        st.info("🌧️ Rain increases demand (especially pakoda)")
-    if weekend == "Yes":
-        st.info("🎉 Weekend increases customer flow")
